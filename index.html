@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mBlock to Arduino Converter</title>
+  <meta name="description" content="Convert mBlock 5 projects (.mblock / .sb3) to clean, native Arduino C++ (.ino) sketches directly in your browser.">
+  
+  <!-- Prism.js for C++ Syntax Highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --code-bg: #0d1117;
+      --badge-bg: #334155;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    header {
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.8) 100%);
+      border-bottom: 1px solid var(--card-border);
+      padding: 1.25rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-subtitle {
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .gh-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .gh-link:hover {
+      background: var(--card-border);
+      border-color: var(--accent);
+    }
+
+    main {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 1.5rem 0 0.5rem;
+    }
+
+    .hero h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Upload Zone */
+    .upload-zone {
+      border: 2px dashed var(--card-border);
+      border-radius: 12px;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .upload-icon {
+      font-size: 3rem;
+      margin-bottom: 0.75rem;
+      display: inline-block;
+    }
+
+    .upload-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .upload-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0ea5e9, #2563eb);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .btn-success {
+      background: #059669;
+      color: #fff;
+    }
+
+    .btn-success:hover {
+      background: #10b981;
+    }
+
+    select.select-control {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    select.select-control:focus {
+      border-color: var(--accent);
+    }
+
+    /* Meta & Analysis Grid */
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .info-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      margin-bottom: 0.4rem;
+    }
+
+    .info-value {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .badge-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.4rem;
+    }
+
+    .badge {
+      background: #334155;
+      color: #e2e8f0;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge.badge-blue {
+      background: rgba(14, 165, 233, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .badge.badge-green {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+
+    .badge.badge-purple {
+      background: rgba(168, 85, 247, 0.2);
+      color: #c084fc;
+      border: 1px solid rgba(192, 132, 252, 0.3);
+    }
+
+    /* Output Editor / Viewer */
+    .editor-card {
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .editor-header {
+      background: #1e293b;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .editor-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .editor-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .code-container {
+      background: var(--code-bg);
+      max-height: 650px;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    pre[class*="language-"] {
+      margin: 0 !important;
+      padding: 1.25rem !important;
+      background: transparent !important;
+      font-size: 0.88rem !important;
+      line-height: 1.6 !important;
+    }
+
+    code[class*="language-"] {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    }
+
+    /* Guide Section */
+    .guide-card h3 {
+      font-size: 1.15rem;
+      margin-bottom: 0.75rem;
+      color: var(--accent);
+    }
+
+    .guide-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin-top: 1rem;
+    }
+
+    .step-box {
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+
+    .step-num {
+      width: 24px;
+      height: 24px;
+      background: var(--accent);
+      color: #0f172a;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-box h4 {
+      font-size: 0.95rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .step-box p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    footer {
+      background: #0b1120;
+      border-top: 1px solid var(--card-border);
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: auto;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: #10b981;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.3s;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="brand">
+        <div class="logo-icon">mB</div>
+        <div>
+          <div class="brand-title">mBlock 5 &rarr; Arduino C++</div>
+          <div class="brand-subtitle">Client-Side GitHub Pages Converter</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap: 0.75rem;">
+        <a class="gh-link" href="https://github.com/Makeblock-official/Makeblock-Libraries" target="_blank" rel="noopener">
+          <span>Makeblock Libraries</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1>Convert Visual Blocks to Arduino C++</h1>
+      <p>Instant, client-side conversion for Makeblock mBot Ranger (Me Auriga), mBot (mCore), MegaPi, and Orion. Zero server uploads.</p>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="card">
+      <div class="upload-zone" id="dropZone">
+        <div class="upload-icon">📂</div>
+        <div class="upload-title">Drop your .mblock, .sb3, or project.json here</div>
+        <div class="upload-desc">Supports drag-and-drop or select from your computer</div>
+        <input type="file" id="fileInput" accept=".mblock,.sb3,.json" style="display: none;">
+        
+        <div class="controls-row">
+          <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+            <span>Choose File</span>
+          </button>
+          <button class="btn btn-secondary" id="btnSample" onclick="loadSampleProject()">
+            <span>⚡ Load Sample (robotik.mblock)</span>
+          </button>
+          
+          <select id="boardSelect" class="select-control" onchange="onBoardChange()">
+            <option value="auto">Auto-Detect Board</option>
+            <option value="auriga">mBot Ranger (Me Auriga)</option>
+            <option value="mcore">mBot (mCore)</option>
+            <option value="megapi">MegaPi</option>
+            <option value="megapipro">MegaPi Pro</option>
+            <option value="orion">Makeblock Orion</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output Section (Hidden initially until loaded) -->
+    <div id="outputSection" style="display: none; flex-direction: column; gap: 1.5rem;">
+      
+      <!-- Project Metadata / Analysis Grid -->
+      <div class="analysis-grid">
+        <div class="info-box">
+          <div class="info-label">Detected Hardware Board</div>
+          <div class="info-value" id="resBoardName">-</div>
+          <div class="info-label" style="margin-top: 0.5rem;">Arduino IDE Board Target</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);" id="resArduinoBoard">-</div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">Active Sensors & Actuators</div>
+          <div class="badge-container" id="resSensors">
+            <!-- Badges populated by JS -->
+          </div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">Custom Procedures ("My Blocks")</div>
+          <div class="badge-container" id="resProcedures">
+            <!-- Badges populated by JS -->
+          </div>
+        </div>
+
+        <div class="info-box">
+          <div class="info-label">User Variables</div>
+          <div class="badge-container" id="resVariables">
+            <!-- Badges populated by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Code Viewer Card -->
+      <div class="card editor-card">
+        <div class="editor-header">
+          <div class="editor-title">
+            <span>📄</span>
+            <span id="sketchFileName">sketch.ino</span>
+            <span class="badge badge-green" id="resStatusBadge">Ready</span>
+          </div>
+          <div class="editor-actions">
+            <button class="btn btn-secondary" onclick="copyCode()">
+              <span>📋 Copy Code</span>
+            </button>
+            <button class="btn btn-primary" onclick="downloadIno()">
+              <span>💾 Download .ino</span>
+            </button>
+            <button class="btn btn-success" id="btnDownloadZip" onclick="downloadZip()">
+              <span>📦 Download Folder (ZIP)</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="code-container">
+          <pre><code class="language-cpp" id="codeDisplay">// Generated Arduino C++ code will appear here...</code></pre>
+        </div>
+      </div>
+
+      <!-- Quick Setup Guide -->
+      <div class="card guide-card">
+        <h3>How to compile & upload in Arduino IDE</h3>
+        <div class="guide-steps">
+          <div class="step-box">
+            <div class="step-num">1</div>
+            <h4>Install Makeblock Library</h4>
+            <p>In Arduino IDE, open <strong>Sketch &gt; Include Library &gt; Manage Libraries...</strong> and install <code>Makeblock</code>.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">2</div>
+            <h4>Select Board & Port</h4>
+            <p id="guideBoardTip">Select <strong>Tools &gt; Board &gt; Arduino Mega or Mega 2560</strong> (for Me Auriga) and pick your robot's COM port.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-num">3</div>
+            <h4>Upload to Robot</h4>
+            <p>Connect your robot via USB cable, turn power ON, and click <strong>Upload (&rarr;)</strong>.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>mBlock 5 to Arduino C++ Open-Source Converter &bull; Runs completely in your browser on GitHub Pages.</p>
+  </footer>
+
+  <div class="toast" id="toast">Copied to clipboard!</div>
+
+  <!-- External & Helper Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+
+  <!-- Converter logic and sample project -->
+  <script src="converter.js"></script>
+  <script src="sample_robotik.js"></script>
+
+  <script>
+    let currentProjectData = null;
+    let currentFileName = 'robotik';
+    let currentResult = null;
+
+    // Drag and drop setup
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        processFile(e.target.files[0]);
+      }
+    });
+
+    async function processFile(file) {
+      currentFileName = file.name.replace(/\.[^/.]+$/, "");
+      
+      try {
+        if (file.name.toLowerCase().endsWith('.json')) {
+          const text = await file.text();
+          currentProjectData = JSON.parse(text);
+          runConversion();
+        } else if (typeof JSZip !== 'undefined') {
+          const zip = await JSZip.loadAsync(file);
+          const projectJsonFile = zip.file('project.json');
+          if (!projectJsonFile) {
+            alert("No project.json found inside the archive!");
+            return;
+          }
+          const text = await projectJsonFile.async('text');
+          currentProjectData = JSON.parse(text);
+          runConversion();
+        } else {
+          alert("JSZip library could not be loaded. Please ensure you have internet access or upload project.json directly.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error parsing project file: " + err.message);
+      }
+    }
+
+    function loadSampleProject() {
+      if (window.SAMPLE_ROBOTIK_PROJECT) {
+        currentFileName = 'robotik';
+        currentProjectData = window.SAMPLE_ROBOTIK_PROJECT;
+        runConversion();
+      } else {
+        alert("Sample project data not loaded.");
+      }
+    }
+
+    function onBoardChange() {
+      if (currentProjectData) {
+        runConversion();
+      }
+    }
+
+    function runConversion() {
+      if (!currentProjectData) return;
+
+      const boardSelect = document.getElementById('boardSelect').value;
+      const boardHint = boardSelect === 'auto' ? null : boardSelect;
+
+      const converter = new MBlockConverter(currentProjectData, boardHint);
+      currentResult = converter.generateCode();
+
+      // Update UI
+      document.getElementById('outputSection').style.display = 'flex';
+      document.getElementById('sketchFileName').textContent = `${currentFileName}.ino`;
+      document.getElementById('resBoardName').textContent = currentResult.board.name;
+      document.getElementById('resArduinoBoard').textContent = currentResult.board.arduinoBoard;
+
+      // Update Guide Tip
+      document.getElementById('guideBoardTip').innerHTML = `Select <strong>Tools &gt; Board &gt; ${currentResult.board.arduinoBoard}</strong> and pick your robot's COM port.`;
+
+      // Update Sensors Badges
+      const sensorsDiv = document.getElementById('resSensors');
+      sensorsDiv.innerHTML = '';
+      const hw = currentResult.hardware;
+      if (hw.encoders) sensorsDiv.innerHTML += `<span class="badge badge-blue">Dual Encoders (Slot 1 & 2)</span>`;
+      if (hw.gyro) sensorsDiv.innerHTML += `<span class="badge badge-purple">Onboard Gyro (Z / Yaw)</span>`;
+      if (hw.rgbRing) sensorsDiv.innerHTML += `<span class="badge badge-green">Onboard RGB LED Ring</span>`;
+      if (hw.mcoreLed) sensorsDiv.innerHTML += `<span class="badge badge-green">mCore RGB LEDs</span>`;
+      hw.ultrasonicPorts.forEach(p => sensorsDiv.innerHTML += `<span class="badge badge-blue">Ultrasonic Sensor (Port ${p})</span>`);
+      hw.linefollowerPorts.forEach(p => sensorsDiv.innerHTML += `<span class="badge badge-green">Line Follower (Port ${p})</span>`);
+      hw.lightsensorPorts.forEach(p => sensorsDiv.innerHTML += `<span class="badge badge-purple">Light Sensor (Port ${p})</span>`);
+      hw.soundsensorPorts.forEach(p => sensorsDiv.innerHTML += `<span class="badge badge-purple">Sound Sensor (Port ${p})</span>`);
+      if (hw.buzzer) sensorsDiv.innerHTML += `<span class="badge badge-blue">Buzzer</span>`;
+      if (!sensorsDiv.innerHTML) sensorsDiv.innerHTML = '<span class="badge">Standard Motors / GPIO</span>';
+
+      // Update Procedures Badges
+      const procsDiv = document.getElementById('resProcedures');
+      procsDiv.innerHTML = '';
+      if (currentResult.procedures.length > 0) {
+        currentResult.procedures.forEach(p => {
+          procsDiv.innerHTML += `<span class="badge badge-blue">${p.fnName}()</span>`;
+        });
+      } else {
+        procsDiv.innerHTML = '<span class="badge">None (Flat Script)</span>';
+      }
+
+      // Update Variables Badges
+      const varsDiv = document.getElementById('resVariables');
+      varsDiv.innerHTML = '';
+      if (currentResult.variables.length > 0) {
+        currentResult.variables.forEach(v => {
+          varsDiv.innerHTML += `<span class="badge badge-purple">${v}</span>`;
+        });
+      } else {
+        varsDiv.innerHTML = '<span class="badge">No variables</span>';
+      }
+
+      // Display Code
+      const codeElem = document.getElementById('codeDisplay');
+      codeElem.textContent = currentResult.code;
+
+      if (window.Prism) {
+        Prism.highlightElement(codeElem);
+      }
+
+      // Scroll smoothly to output
+      document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function copyCode() {
+      if (!currentResult) return;
+      navigator.clipboard.writeText(currentResult.code).then(() => {
+        showToast('Code copied to clipboard!');
+      }).catch(err => {
+        showToast('Failed to copy');
+      });
+    }
+
+    function downloadIno() {
+      if (!currentResult) return;
+      const blob = new Blob([currentResult.code], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${currentFileName}.ino`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast(`Downloaded ${currentFileName}.ino`);
+    }
+
+    async function downloadZip() {
+      if (!currentResult) return;
+      if (typeof JSZip === 'undefined') {
+        alert("JSZip not available to create zip folder. Please use 'Download .ino' instead.");
+        return;
+      }
+
+      const zip = new JSZip();
+      // Arduino IDE expects folder name == sketch name
+      const folder = zip.folder(currentFileName);
+      folder.file(`${currentFileName}.ino`, currentResult.code);
+
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${currentFileName}_arduino_sketch.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast(`Downloaded ${currentFileName}_arduino_sketch.zip`);
+    }
+
+    // Auto-load sample on first visit for nice preview
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.SAMPLE_ROBOTIK_PROJECT) {
+        loadSampleProject();
+      }
+    });
+  </script>
+</body>
+</html>
